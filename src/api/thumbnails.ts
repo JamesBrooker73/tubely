@@ -4,7 +4,8 @@ import { getVideo, updateVideo } from "../db/videos";
 import type { ApiConfig } from "../config";
 import type { BunRequest } from "bun";
 import { BadRequestError, NotFoundError, UserForbiddenError } from "./errors";
-import { getAssetDiskPath, getAssetURL, mediaTypeToExt } from "./assets";
+import { getAssetDiskPath, getAssetPath, getAssetURL, mediaTypeToExt } from "./assets";
+import { randomBytes } from "crypto";
 
 
 export async function handlerUploadThumbnail(cfg: ApiConfig, req: BunRequest) {
@@ -46,13 +47,12 @@ export async function handlerUploadThumbnail(cfg: ApiConfig, req: BunRequest) {
       throw new Error("Error reading file data");
   }
 
-  const ext = mediaTypeToExt(mediaType);
-  const filename = `${videoId}${ext}`;
+  const assetPath = getAssetPath(mediaType);
 
-  const assetDiskPath = getAssetDiskPath(cfg, filename);
+  const assetDiskPath = getAssetDiskPath(cfg, assetPath);
   await Bun.write(assetDiskPath, imageData);
 
-  const urlPath = getAssetURL(cfg, filename);
+  const urlPath = getAssetURL(cfg, assetPath);
   thumbnailMetaData.thumbnailURL = urlPath;
   
   updateVideo(cfg.db, thumbnailMetaData);

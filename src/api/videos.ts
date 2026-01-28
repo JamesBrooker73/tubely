@@ -6,9 +6,10 @@ import { getVideo, updateVideo } from "../db/videos";
 
 import { type ApiConfig } from "../config";
 import { type BunRequest } from "bun";
-import { generatePresignedURL, uploadVideoToS3 } from "../s3";
+import { uploadVideoToS3 } from "../s3";
 import { rm } from "fs/promises";
 import { type Video } from "../db/videos";
+import { Console } from "console";
 
 
 export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
@@ -62,7 +63,7 @@ export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
   
   await uploadVideoToS3(cfg, key, processedVideoPath, "video/mp4");
 
-  const videoUrl = `${key}`;
+  const videoUrl = `${cfg.s3CfDistribution}/${key}`;
   videoMetaData.videoURL = videoUrl;
   updateVideo(cfg.db, videoMetaData);
 
@@ -71,9 +72,7 @@ export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
     rm(processedVideoPath, { force: true }),
   ]); 
 
-  const signedVideo = await dbVideoToSignedVideo(cfg, videoMetaData);
-
-  return respondWithJSON(200, signedVideo);
+  return respondWithJSON(200, videoMetaData);
 }
 
 export async function getVideoAspectRatio(filePath: string): Promise<string> {
@@ -159,15 +158,7 @@ export async function processVideoForFastStart(inputFilePath: string): Promise<s
 
 }
 
-export async function dbVideoToSignedVideo(cfg: ApiConfig, video: Video) {
-  if (!video.videoURL) {
-    return video;
-  }
 
-  video.videoURL = await generatePresignedURL(cfg, video.videoURL, 5 * 60);
-
-  return video;
-}
 
 
 
